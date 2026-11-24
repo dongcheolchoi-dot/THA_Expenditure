@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>บันทึกรายรับ-รายจ่าย | 태국 가계부</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Noto+Sans+Thai:wght@400;500;600;700&family=Prompt:wght@500;600;700&display=swap" rel="stylesheet" />
+  <script src="config.js" onerror="window.APP_CONFIG = window.APP_CONFIG || { SCRIPT_URL: '', DEFAULT_PIN: '', AUTH_MODE: 'A' };"></script>
+  <style>
+    :root {
+      --bg: #f4f7f6;
+      --card: #ffffff;
+      --primary: #0f766e;
+      --primary-light: #ccfbf1;
+      --expense: #e11d48;
+      --expense-bg: #ffe4e6;
+      --income: #059669;
+      --income-bg: #d1fae5;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --radius: 18px;
+      --shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: 'Prompt', 'Noto Sans Thai', 'Noto Sans KR', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+      padding-bottom: 40px;
+    }
+
+    .app-container {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 14px;
+    }
+
+    /* Login Overlay */
+    .login-overlay {
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(160deg, #0f766e 0%, #115e59 100%);
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .login-overlay.hidden { display: none; }
+
+    .login-card {
+      width: 100%;
+      max-width: 360px;
+      background: #ffffff;
+      border-radius: 24px;
+      padding: 28px 22px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    }
+    .login-icon { font-size: 42px; margin-bottom: 8px; }
+    .login-title { font-size: 20px; font-weight: 700; color: var(--text); }
+    .login-sub { font-size: 13px; color: var(--muted); margin: 4px 0 18px; }
+
+    .pin-dots {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 14px;
+      min-height: 22px;
+    }
+    .pin-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid var(--primary);
+      background: transparent;
+      transition: 0.15s;
+    }
+    .pin-dot.filled { background: var(--primary); }
+
+    .pin-input {
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 20px;
+      text-align: center;
+      letter-spacing: 6px;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 12px;
+      font-family: inherit;
+    }
+    .pin-input:focus { outline: none; border-color: var(--primary); }
+
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .key-btn {
+      padding: 14px 0;
+      font-size: 20px;
+      font-weight: 600;
+      border: none;
+      border-radius: 14px;
+      background: #f1f5f9;
+      color: var(--text);
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .key-btn:active { background: #cbd5e1; transform: scale(0.97); }
+    .key-btn.primary-key { background: var(--primary); color: #fff; font-size: 15px; }
+
+    .login-error {
+      color: var(--expense);
+      font-size: 13px;
+      min-height: 20px;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    /* Header */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      gap: 8px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .brand-title { font-size: 18px; font-weight: 700; color: var(--primary); }
+    .sync-badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 99px;
+      background: var(--primary-light);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    .sync-badge.offline { background: #fef3c7; color: #b45309; }
+
+    .top-controls {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .chip-btn {
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 6px 9px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .chip-btn:active { transform: scale(0.96); }
+
+    /* Cards */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow);
+      margin-bottom: 14px;
+    }
+
+    .month-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .month-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: #fff;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .month-label { font-size: 16px; font-weight: 700; }
+
+    .balance-box {
+      text-align: center;
+      margin-bottom: 14px;
+    }
+    .balance-label { font-size: 12px; color: var(--muted); }
+    .balance-value { font-size: 28px; font-weight: 700; margin-top: 2px; }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .sum-item {
+      padding: 10px 12px;
+      border-radius: 14px;
+      text-align: center;
+    }
+    .sum-item.inc { background: var(--income-bg); color: var(--income); }
+    .sum-item.exp { background: var(--expense-bg); color: var(--expense); }
+    .sum-title { font-size: 12px; opacity: 0.9; }
+    .sum-val { font-size: 16px; font-weight: 700; margin-top: 2px; }
+
+    /* Budget */
+    .budget-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .budget-edit-btn {
+      border: none;
+      background: transparent;
+      color: var(--primary);
+      font-weight: 600;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .progress-track {
+      height: 10px;
+      background: #e2e8f0;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 99px;
+      transition: width 0.3s ease, background 0.3s ease;
+    }
+
+    /* Form */
+    .type-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      background: #f1f5f9;
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 12px;
+    }
+    .type-tab {
+      border: none;
+      background: transparent;
+      padding: 9px;
+      border-radius: 9px;
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--muted);
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .type-tab.active.exp { background: var(--expense); color: #fff; }
+    .type-tab.active.inc { background: var(--income); color: #fff; }
+
+    .amount-input-wrap {
+      display: flex;
+      align-items: center;
+      border: 2px solid var(--border);
+      border-radius: 14px;
+      padding: 8px 14px;
+      margin-bottom: 10px;
+      background: #f8fafc;
+    }
+    .amount-input-wrap:focus-within { border-color: var(--primary); background: #fff; }
+    .currency-prefix { font-size: 24px; font-weight: 700; color: var(--primary); margin-right: 8px; }
+    .amount-input {
+      width: 100%;
+      border: none;
+      background: transparent;
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--text);
+      font-family: inherit;
+      outline: none;
+    }
+
+    .quick-amounts {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .quick-btn {
+      flex: 1;
+      min-width: 60px;
+      padding: 7px 4px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--primary);
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .quick-btn:active { background: var(--primary-light); }
+
+    .category-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .cat-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 4px;
+      border-radius: 12px;
+      border: 1.5px solid var(--border);
+      background: #fff;
+      cursor: pointer;
+      font-family: inherit;
+      gap: 3px;
+    }
+    .cat-btn.selected {
+      border-color: var(--primary);
+      background: var(--primary-light);
+    }
+    .cat-emoji { font-size: 20px; }
+    .cat-name { font-size: 11px; font-weight: 500; text-align: center; }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: 1fr 1.3fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .text-input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+    }
+    .text-input:focus { border-color: var(--primary); }
+
+    .submit-btn {
+      width: 100%;
+      padding: 13px;
+      border: none;
+      border-radius: 14px;
+      background: var(--primary);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* Chart */
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .section-title { font-size: 15px; font-weight: 700; }
+
+    .chart-wrap {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .legend-list {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 12px;
+    }
+    .legend-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .legend-left { display: flex; align-items: center; gap: 6px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+    /* List */
+    .filter-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .filter-btn {
+      padding: 5px 10px;
+      border-radius: 99px;
+      border: 1px solid var(--border);
+      background: #fff;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .filter-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    .date-group-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      margin: 12px 0 6px;
+    }
+    .tx-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .tx-left { display: flex; align-items: center; gap: 10px; }
+    .tx-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 19px;
+    }
+    .tx-cat { font-size: 14px; font-weight: 600; }
+    .tx-memo { font-size: 12px; color: var(--muted); }
+    .tx-right { display: flex; align-items: center; gap: 8px; }
+    .tx-amount { font-size: 14px; font-weight: 700; }
+    .tx-amount.exp { color: var(--expense); }
+    .tx-amount.inc { color: var(--income); }
+    .del-btn {
+      border: none;
+      background: transparent;
+      color: #94a3b8;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 4px;
+    }
+    .del-btn:hover { color: var(--expense); }
+
+    .empty-state {
+      text-align: center;
+      padding: 24px 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1e293b;
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 99px;
+      font-size: 13px;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+
+  <!-- PIN Login Overlay -->
+  <div id="loginOverlay" class="login-overlay">
+    <div class="login-card">
+      <div class="login-icon">🔐</div>
+      <div class="login-title" id="loginTitle">ใส่รหัส PIN</div>
+      <div class="login-sub" id="loginSub">เข้าสู่ระบบครั้งเดียวเพื่อเชื่อมต่อ Google Sheets</div>
+      <div class="pin-dots" id="pinDots">
+        <span class="pin-dot"></span>
+        <span class="pin-dot"></span>
+        <span class="pin-dot"></span>
+        <span class="pin-dot"></span>
+      </div>
+      <div class="login-error" id="loginError"></div>
+      <div class="keypad">
+        <button class="key-btn" onclick="pressPin('1')">1</button>
+        <button class="key-btn" onclick="pressPin('2')">2</button>
+        <button class="key-btn" onclick="pressPin('3')">3</button>
+        <button class="key-btn" onclick="pressPin('4')">4</button>
+        <button class="key-btn" onclick="pressPin('5')">5</button>
+        <button class="key-btn" onclick="pressPin('6')">6</button>
+        <button class="key-btn" onclick="pressPin('7')">7</button>
+        <button class="key-btn" onclick="pressPin('8')">8</button>
+        <button class="key-btn" onclick="pressPin('9')">9</button>
+        <button class="key-btn" onclick="clearPin()">C</button>
+        <button class="key-btn" onclick="pressPin('0')">0</button>
+        <button class="key-btn primary-key" id="loginSubmitBtn" onclick="submitPin()">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="app-container">
+    <!-- Top Bar -->
+    <div class="top-bar">
+      <div class="brand">
+        <span class="brand-title" id="appTitle">บันทึกรายรับ-รายจ่าย</span>
+        <span class="sync-badge" id="syncBadge">Sheets</span>
+      </div>
+      <div class="top-controls">
+        <button class="chip-btn" id="langBtn" onclick="toggleLang()">TH/KR</button>
+        <button class="chip-btn" id="currBtn" onclick="toggleCurrency()">฿/₩</button>
+        <button class="chip-btn" onclick="syncFromCloud()" title="Sync">🔄</button>
+        <button class="chip-btn" onclick="logoutPin()" title="Lock">🔒</button>
+      </div>
+    </div>
+
+    <!-- Summary Card -->
+    <div class="card">
+      <div class="month-nav">
+        <button class="month-btn" onclick="changeMonth(-1)">‹</button>
+        <div class="month-label" id="monthLabel">2026-11</div>
+        <button class="month-btn" onclick="changeMonth(1)">›</button>
+      </div>
+
+      <div class="balance-box">
+        <div class="balance-label" id="lblBalance">ยอดคงเหลือเดือนนี้</div>
+        <div class="balance-value" id="balanceVal">฿0</div>
+      </div>
+
+      <div class="summary-grid">
+        <div class="sum-item inc">
+          <div class="sum-title" id="lblIncome">รายรับ</div>
+          <div class="sum-val" id="incomeVal">฿0</div>
+        </div>
+        <div class="sum-item exp">
+          <div class="sum-title" id="lblExpense">รายจ่าย</div>
+          <div class="sum-val" id="expenseVal">฿0</div>
+        </div>
+      </div>
+
+      <div class="budget-header">
+        <span id="budgetText">งบประมาณ: 0%</span>
+        <button class="budget-edit-btn" id="budgetEditBtn" onclick="editBudget()">ตั้งงบ</button>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="budgetBar"></div>
+      </div>
+    </div>
+
+    <!-- Input Card -->
+    <div class="card">
+      <div class="type-tabs">
+        <button class="type-tab active exp" id="tabExp" onclick="setType('expense')">รายจ่าย</button>
+        <button class="type-tab inc" id="tabInc" onclick="setType('income')">รายรับ</button>
+      </div>
+
+      <div class="amount-input-wrap">
+        <span class="currency-prefix" id="currPrefix">฿</span>
+        <input type="number" inputmode="decimal" id="amountInput" class="amount-input" placeholder="0" />
+      </div>
+
+      <div class="quick-amounts">
+        <button class="quick-btn" onclick="addQuickAmount(20)">+20</button>
+        <button class="quick-btn" onclick="addQuickAmount(50)">+50</button>
+        <button class="quick-btn" onclick="addQuickAmount(100)">+100</button>
+        <button class="quick-btn" onclick="addQuickAmount(500)">+500</button>
+        <button class="quick-btn" onclick="document.getElementById('amountInput').value=''">C</button>
+      </div>
+
+      <div class="category-grid" id="categoryGrid"></div>
+
+      <div class="input-row">
+        <input type="date" id="dateInput" class="text-input" />
+        <input type="text" id="memoInput" class="text-input" placeholder="บันทึกช่วยจำ (ไม่บังคับ)" />
+      </div>
+
+      <button class="submit-btn" id="submitBtn" onclick="addTransaction()">บันทึกรายการ</button>
+    </div>
+
+    <!-- Chart Card -->
+    <div class="card">
+      <div class="section-header">
+        <span class="section-title" id="lblChartTitle">สัดส่วนรายจ่ายตามหมวดหมู่</span>
+      </div>
+      <div id="chartContainer" class="chart-wrap"></div>
+    </div>
+
+    <!-- History Card -->
+    <div class="card">
+      <div class="section-header">
+        <span class="section-title" id="lblHistoryTitle">รายการทั้งหมด</span>
+        <div style="display:flex; gap:6px;">
+          <button class="chip-btn" onclick="exportCSV()">CSV</button>
+          <button class="chip-btn" onclick="clearAllData()" id="clearAllBtn">ล้าง</button>
+        </div>
+      </div>
+
+      <div class="filter-row">
+        <button class="filter-btn active" id="fltAll" onclick="setFilter('all')">ทั้งหมด</button>
+        <button class="filter-btn" id="fltExp" onclick="setFilter('expense')">รายจ่าย</button>
+        <button class="filter-btn" id="fltInc" onclick="setFilter('income')">รายรับ</button>
+      </div>
+
+      <div id="txList"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const CONFIG = window.APP_CONFIG || { SCRIPT_URL: "", DEFAULT_PIN: "", AUTH_MODE: "A" };
+    const STORAGE_TX = "thai_ledger_tx_v2";
+    const STORAGE_BUDGET = "thai_ledger_budget_v2";
+    const STORAGE_PIN = "thai_ledger_saved_pin";
+    const STORAGE_LANG = "thai_ledger_lang";
+    const STORAGE_CURR = "thai_ledger_curr";
+
+    const I18N = {
+      th: {
+        title: "บันทึกรายรับ-รายจ่าย",
+        balance: "ยอดคงเหลือเดือนนี้",
+        income: "รายรับ",
+        expense: "รายจ่าย",
+        budget: "งบประมาณ",
+        setBudget: "ตั้งงบ",
+        memoPlaceholder: "บันทึกช่วยจำ (เช่น ชาเย็น, BTS)",
+        saveBtn: "บันทึกรายการ",
+        chartTitle: "สัดส่วนรายจ่ายตามหมวดหมู่",
+        historyTitle: "รายการทั้งหมด",
+        all: "ทั้งหมด",
+        clear: "ล้าง",
+        empty: "ยังไม่มีรายการในเดือนนี้",
+        noChart: "ยังไม่มีข้อมูลรายจ่ายในเดือนนี้",
+        loginTitle: "ใส่รหัส PIN",
+        loginSub: "กรอก PIN 1 ครั้งเพื่อเชื่อมต่อ Google Sheets อัตโนมัติ",
+        wrongPin: "รหัส PIN ไม่ถูกต้อง กรุณาลองใหม่",
+        savedToast: "บันทึกเรียบร้อยแล้ว",
+        deletedToast: "ลบรายการแล้ว",
+        syncedToast: "ซิงค์ข้อมูลกับ Google Sheets แล้ว",
+        promptBudget: "กรอกงบประมาณรายเดือน:",
+        confirmClear: "ต้องการลบข้อมูลทั้งหมดใช่หรือไม่?",
+        confirmLogout: "ล็อกแอปและกรอก PIN ใหม่หรือไม่?"
+      },
+      kr: {
+        title: "태국 간편 가계부",
+        balance: "이번 달 잔액",
+        income: "수입",
+        expense: "지출",
+        budget: "월 예산",
+        setBudget: "예산 설정",
+        memoPlaceholder: "메모 (예: 타이티, BTS)",
+        saveBtn: "내역 저장",
+        chartTitle: "카테고리별 지출 비율",
+        historyTitle: "거래 내역",
+        all: "전체",
+        clear: "초기화",
+        empty: "이번 달 기록된 내역이 없습니다.",
+        noChart: "이번 달 지출 데이터가 없습니다.",
+        loginTitle: "PIN 번호 입력",
+        loginSub: "최초 1회 인증 후 구글 시트에 자동 로그인됩니다",
+        wrongPin: "PIN 번호가 일치하지 않습니다.",
+        savedToast: "저장되었습니다.",
+        deletedToast: "삭제되었습니다.",
+        syncedToast: "구글 시트와 동기화되었습니다.",
+        promptBudget: "월 예산을 입력하세요:",
+        confirmClear: "모든 내역을 삭제하시겠습니까?",
+        confirmLogout: "앱을 잠그고 PIN을 다시 입력하시겠습니까?"
+      }
+    };
+
+    const CATEGORIES = {
+      expense: [
+        { id: "food", emoji: "🍜", th: "อาหาร", kr: "식비", color: "#f97316" },
+        { id: "drink", emoji: "🧋", th: "กาแฟ/ชา", kr: "카페/음료", color: "#eab308" },
+        { id: "transport", emoji: "🚇", th: "เดินทาง", kr: "교통", color: "#3b82f6" },
+        { id: "mart", emoji: "🏪", th: "7-11/ของใช้", kr: "편의점/마트", color: "#10b981" },
+        { id: "housing", emoji: "🏠", th: "ที่พัก/น้ำไฟ", kr: "주거/공과금", color: "#6366f1" },
+        { id: "shopping", emoji: "🛍️", th: "ช้อปปิ้ง", kr: "쇼핑", color: "#ec4899" },
+        { id: "health", emoji: "💊", th: "สุขภาพ", kr: "의료/건강", color: "#14b8a6" },
+        { id: "etc", emoji: "📦", th: "อื่นๆ", kr: "기타", color: "#64748b" }
+      ],
+      income: [
+        { id: "salary", emoji: "💼", th: "เงินเดือน", kr: "급여", color: "#059669" },
+        { id: "side", emoji: "💻", th: "รายได้เสริม", kr: "부수입", color: "#0284c7" },
+        { id: "gift", emoji: "🎁", th: "โบนัส/ของขวัญ", kr: "용돈/보너스", color: "#d97706" },
+        { id: "etc_inc", emoji: "💰", th: "อื่นๆ", kr: "기타수입", color: "#64748b" }
+      ]
+    };
+
+    let state = {
+      lang: localStorage.getItem(STORAGE_LANG) || "th",
+      currency: localStorage.getItem(STORAGE_CURR) || "฿",
+      type: "expense",
+      category: "food",
+      filter: "all",
+      currentMonth: new Date().toISOString().slice(0, 7),
+      transactions: JSON.parse(localStorage.getItem(STORAGE_TX) || "[]"),
+      budget: Number(localStorage.getItem(STORAGE_BUDGET) || 15000),
+      pin: localStorage.getItem(STORAGE_PIN) || "",
+      pinInput: "",
+      cloudConnected: Boolean(CONFIG.SCRIPT_URL && CONFIG.SCRIPT_URL.startsWith("http"))
+    };
+
+    function t(key) { return I18N[state.lang][key]; }
+
+    function showToast(msg) {
+      const el = document.getElementById("toast");
+      el.textContent = msg;
+      el.classList.add("show");
+      setTimeout(() => el.classList.remove("show"), 2200);
+    }
+
+    function formatMoney(num) {
+      return state.currency + Number(num || 0).toLocaleString();
+    }
+
+    function getCategoryInfo(type, catId) {
+      const list = CATEGORIES[type] || CATEGORIES.expense;
+      return list.find(c => c.id === catId) || list[list.length - 1];
+    }
+
+    // --- PIN & Auth ---
+    function updatePinDots() {
+      const dots = document.querySelectorAll("#pinDots .pin-dot");
+      dots.forEach((d, idx) => {
+        d.classList.toggle("filled", idx < state.pinInput.length);
+      });
+    }
+
+    function pressPin(num) {
+      if (state.pinInput.length >= 6) return;
+      state.pinInput += num;
+      updatePinDots();
+      document.getElementById("loginError").textContent = "";
+    }
+
+    function clearPin() {
+      state.pinInput = "";
+      updatePinDots();
+      document.getElementById("loginError").textContent = "";
+    }
+
+    async function submitPin() {
+      if (!state.pinInput) return;
+      const btn = document.getElementById("loginSubmitBtn");
+      btn.disabled = true;
+      btn.textContent = "...";
+      const ok = await verifyAndLoadCloud(state.pinInput);
+      btn.disabled = false;
+      btn.textContent = "OK";
+      if (ok) {
+        state.pin = state.pinInput;
+        localStorage.setItem(STORAGE_PIN, state.pin);
+        document.getElementById("loginOverlay").classList.add("hidden");
+        renderAll();
+      } else {
+        document.getElementById("loginError").textContent = t("wrongPin");
+        state.pinInput = "";
+        updatePinDots();
+      }
+    }
+
+    function logoutPin() {
+      if (!state.cloudConnected) return;
+      if (!confirm(t("confirmLogout"))) return;
+      localStorage.removeItem(STORAGE_PIN);
+      state.pin = "";
+      state.pinInput = "";
+      updatePinDots();
+      document.getElementById("loginOverlay").classList.remove("hidden");
+    }
+
+    async function verifyAndLoadCloud(pin) {
+      if (!state.cloudConnected) return true;
+      try {
+        const res = await fetch(`${CONFIG.SCRIPT_URL}?pin=${encodeURIComponent(pin)}`);
+        const json = await res.json();
+        if (json.status === "ok") {
+          state.transactions = Array.isArray(json.data) ? json.data : [];
+          if (json.budget) state.budget = Number(json.budget);
+          localStorage.setItem(STORAGE_TX, JSON.stringify(state.transactions));
+          localStorage.setItem(STORAGE_BUDGET, String(state.budget));
+          return true;
+        }
+        return false;
+      } catch (e) {
+        console.error(e);
+        return false;
+      }
+    }
+
+    async function postCloud(payload) {
+      if (!state.cloudConnected || !state.pin) return;
+      try {
+        await fetch(CONFIG.SCRIPT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({ ...payload, pin: state.pin })
+        });
+      } catch (e) {
+        console.error("Cloud sync error:", e);
+      }
+    }
+
+    async function syncFromCloud() {
+      if (!state.cloudConnected) {
+        showToast("Local Mode (SCRIPT_URL 미설정)");
+        return;
+      }
+      const ok = await verifyAndLoadCloud(state.pin);
+      if (ok) {
+        renderAll();
+        showToast(t("syncedToast"));
+      }
+    }
+
+    async function initAuth() {
+      const badge = document.getElementById("syncBadge");
+      if (!state.cloudConnected) {
+        badge.textContent = "Local";
+        badge.classList.add("offline");
+        document.getElementById("loginOverlay").classList.add("hidden");
+        renderAll();
+        return;
+      }
+
+      badge.textContent = "Sheets";
+      badge.classList.remove("offline");
+
+      // 방식 B: 빌드 시 주입된 DEFAULT_PIN으로 무입력 자동 로그인
+      // 방식 A: 저장된 saved_pin이 있으면 자동 로그인, 없으면 최초 1회 PIN 입력
+      const autoPin = state.pin || (CONFIG.AUTH_MODE === "B" ? CONFIG.DEFAULT_PIN : "");
+      if (autoPin) {
+        const ok = await verifyAndLoadCloud(autoPin);
+        if (ok) {
+          state.pin = autoPin;
+          localStorage.setItem(STORAGE_PIN, autoPin);
+          document.getElementById("loginOverlay").classList.add("hidden");
+          renderAll();
+          return;
+        }
+      }
+      document.getElementById("loginOverlay").classList.remove("hidden");
+    }
+
+    // --- UI Actions ---
+    function toggleLang() {
+      state.lang = state.lang === "th" ? "kr" : "th";
+      localStorage.setItem(STORAGE_LANG, state.lang);
+      renderAll();
+    }
+
+    function toggleCurrency() {
+      state.currency = state.currency === "฿" ? "₩" : "฿";
+      localStorage.setItem(STORAGE_CURR, state.currency);
+      renderAll();
+    }
+
+    function changeMonth(delta) {
+      const [y, m] = state.currentMonth.split("-").map(Number);
+      const d = new Date(y, m - 1 + delta, 1);
+      state.currentMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      renderAll();
+    }
+
+    function setType(type) {
+      state.type = type;
+      state.category = CATEGORIES[type][0].id;
+      renderForm();
+    }
+
+    function selectCategory(catId) {
+      state.category = catId;
+      renderCategories();
+    }
+
+    function addQuickAmount(val) {
+      const input = document.getElementById("amountInput");
+      input.value = Number(input.value || 0) + val;
+    }
+
+    function setFilter(f) {
+      state.filter = f;
+      renderHistory();
+    }
+
+    async function editBudget() {
+      const val = prompt(t("promptBudget"), state.budget);
+      if (val === null) return;
+      const num = Number(val);
+      if (num > 0) {
+        state.budget = num;
+        localStorage.setItem(STORAGE_BUDGET, String(num));
+        renderSummary();
+        await postCloud({ action: "setBudget", budget: num });
+      }
+    }
+
+    async function addTransaction() {
+      const amount = Number(document.getElementById("amountInput").value);
+      const date = document.getElementById("dateInput").value || new Date().toISOString().slice(0, 10);
+      const memo = document.getElementById("memoInput").value.trim();
+      if (!amount || amount <= 0) return;
+
+      const item = {
+        id: String(Date.now()),
+        date,
+        type: state.type,
+        category: state.category,
+        amount,
+        memo
+      };
+
+      state.transactions.unshift(item);
+      localStorage.setItem(STORAGE_TX, JSON.stringify(state.transactions));
+
+      document.getElementById("amountInput").value = "";
+      document.getElementById("memoInput").value = "";
+      state.currentMonth = date.slice(0, 7);
+      renderAll();
+      showToast(t("savedToast"));
+
+      await postCloud({ action: "add", item });
+    }
+
+    async function deleteTransaction(id) {
+      state.transactions = state.transactions.filter(tx => String(tx.id) !== String(id));
+      localStorage.setItem(STORAGE_TX, JSON.stringify(state.transactions));
+      renderAll();
+      showToast(t("deletedToast"));
+      await postCloud({ action: "delete", id });
+    }
+
+    async function clearAllData() {
+      if (!confirm(t("confirmClear"))) return;
+      state.transactions = [];
+      localStorage.setItem(STORAGE_TX, "[]");
+      renderAll();
+      await postCloud({ action: "clear" });
+    }
+
+    function exportCSV() {
+      const header = ["Date", "Type", "Category", "Amount", "Memo"];
+      const rows = state.transactions.map(tx => [
+        tx.date,
+        tx.type,
+        tx.category,
+        tx.amount,
+        `"${String(tx.memo || "").replace(/"/g, '""')}"`
+      ]);
+      const csv = "\uFEFF" + [header, ...rows].map(r => r.join(",")).join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `thai-ledger-${state.currentMonth}.csv`;
+      a.click();
+    }
+
+    // --- Render ---
+    function getMonthTxs() {
+      return state.transactions.filter(tx => String(tx.date || "").startsWith(state.currentMonth));
+    }
+
+    function renderLabels() {
+      document.getElementById("appTitle").textContent = t("title");
+      document.getElementById("loginTitle").textContent = t("loginTitle");
+      document.getElementById("loginSub").textContent = t("loginSub");
+      document.getElementById("lblBalance").textContent = t("balance");
+      document.getElementById("lblIncome").textContent = t("income");
+      document.getElementById("lblExpense").textContent = t("expense");
+      document.getElementById("budgetEditBtn").textContent = t("setBudget");
+      document.getElementById("tabExp").textContent = t("expense");
+      document.getElementById("tabInc").textContent = t("income");
+      document.getElementById("memoInput").placeholder = t("memoPlaceholder");
+      document.getElementById("submitBtn").textContent = t("saveBtn");
+      document.getElementById("lblChartTitle").textContent = t("chartTitle");
+      document.getElementById("lblHistoryTitle").textContent = t("historyTitle");
+      document.getElementById("fltAll").textContent = t("all");
+      document.getElementById("fltExp").textContent = t("expense");
+      document.getElementById("fltInc").textContent = t("income");
+      document.getElementById("clearAllBtn").textContent = t("clear");
+      document.getElementById("currPrefix").textContent = state.currency;
+      document.getElementById("langBtn").textContent = state.lang.toUpperCase();
+      document.getElementById("currBtn").textContent = state.currency;
+    }
+
+    function renderSummary() {
+      document.getElementById("monthLabel").textContent = state.currentMonth;
+      const txs = getMonthTxs();
+      const inc = txs.filter(x => x.type === "income").reduce((s, x) => s + Number(x.amount), 0);
+      const exp = txs.filter(x => x.type === "expense").reduce((s, x) => s + Number(x.amount), 0);
+
+      document.getElementById("balanceVal").textContent = formatMoney(inc - exp);
+      document.getElementById("incomeVal").textContent = formatMoney(inc);
+      document.getElementById("expenseVal").textContent = formatMoney(exp);
+
+      const pct = state.budget > 0 ? Math.round((exp / state.budget) * 100) : 0;
+      document.getElementById("budgetText").textContent = `${t("budget")} ${formatMoney(state.budget)} (${pct}%)`;
+      const bar = document.getElementById("budgetBar");
+      bar.style.width = Math.min(pct, 100) + "%";
+      bar.style.background = pct >= 100 ? "#e11d48" : pct >= 75 ? "#f59e0b" : "#10b981";
+    }
+
+    function renderForm() {
+      document.getElementById("tabExp").classList.toggle("active", state.type === "expense");
+      document.getElementById("tabInc").classList.toggle("active", state.type === "income");
+      renderCategories();
+    }
+
+    function renderCategories() {
+      const grid = document.getElementById("categoryGrid");
+      const list = CATEGORIES[state.type];
+      grid.innerHTML = list.map(c => `
+        <button class="cat-btn ${state.category === c.id ? "selected" : ""}" onclick="selectCategory('${c.id}')">
+          <span class="cat-emoji">${c.emoji}</span>
+          <span class="cat-name">${c[state.lang]}</span>
+        </button>
+      `).join("");
+    }
+
+    function renderChart() {
+      const container = document.getElementById("chartContainer");
+      const expTxs = getMonthTxs().filter(x => x.type === "expense");
+      const total = expTxs.reduce((s, x) => s + Number(x.amount), 0);
+
+      if (total === 0) {
+        container.innerHTML = `<div class="empty-state" style="width:100%">${t("noChart")}</div>`;
+        return;
+      }
+
+      const byCat = {};
+      expTxs.forEach(x => { byCat[x.category] = (byCat[x.category] || 0) + Number(x.amount); });
+      const entries = Object.entries(byCat).sort((a, b) => b[1] - a[1]);
+
+      const r = 42, circ = 2 * Math.PI * r;
+      let offset = 0;
+      const circles = entries.map(([catId, val]) => {
+        const info = getCategoryInfo("expense", catId);
+        const len = (val / total) * circ;
+        const svg = `<circle cx="55" cy="55" r="${r}" fill="none" stroke="${info.color}" stroke-width="18" stroke-dasharray="${len} ${circ - len}" stroke-dashoffset="${-offset}" transform="rotate(-90 55 55)" />`;
+        offset += len;
+        return svg;
+      }).join("");
+
+      const legend = entries.map(([catId, val]) => {
+        const info = getCategoryInfo("expense", catId);
+        const pct = Math.round((val / total) * 100);
+        return `
+          <div class="legend-item">
+            <div class="legend-left">
+              <span class="legend-dot" style="background:${info.color}"></span>
+              <span>${info.emoji} ${info[state.lang]}</span>
+            </div>
+            <strong>${pct}% (${formatMoney(val)})</strong>
+          </div>
+        `;
+      }).join("");
+
+      container.innerHTML = `
+        <svg width="110" height="110" viewBox="0 0 110 110">${circles}</svg>
+        <div class="legend-list">${legend}</div>
+      `;
+    }
+
+    function renderHistory() {
+      document.getElementById("fltAll").classList.toggle("active", state.filter === "all");
+      document.getElementById("fltExp").classList.toggle("active", state.filter === "expense");
+      document.getElementById("fltInc").classList.toggle("active", state.filter === "income");
+
+      const listEl = document.getElementById("txList");
+      let txs = getMonthTxs();
+      if (state.filter !== "all") txs = txs.filter(x => x.type === state.filter);
+
+      if (txs.length === 0) {
+        listEl.innerHTML = `<div class="empty-state">${t("empty")}</div>`;
+        return;
+      }
+
+      const groups = {};
+      txs.sort((a, b) => String(b.date).localeCompare(String(a.date))).forEach(tx => {
+        if (!groups[tx.date]) groups[tx.date] = [];
+        groups[tx.date].push(tx);
+      });
+
+      listEl.innerHTML = Object.entries(groups).map(([date, items]) => `
+        <div class="date-group-title">${date}</div>
+        ${items.map(tx => {
+          const info = getCategoryInfo(tx.type, tx.category);
+          const sign = tx.type === "expense" ? "-" : "+";
+          return `
+            <div class="tx-item">
+              <div class="tx-left">
+                <div class="tx-icon">${info.emoji}</div>
+                <div>
+                  <div class="tx-cat">${info[state.lang]}</div>
+                  <div class="tx-memo">${tx.memo || ""}</div>
+                </div>
+              </div>
+              <div class="tx-right">
+                <span class="tx-amount ${tx.type === "expense" ? "exp" : "inc"}">${sign}${formatMoney(tx.amount)}</span>
+                <button class="del-btn" onclick="deleteTransaction('${tx.id}')">✕</button>
+              </div>
+            </div>
+          `;
+        }).join("")}
+      `).join("");
+    }
+
+    function renderAll() {
+      renderLabels();
+      renderSummary();
+      renderForm();
+      renderChart();
+      renderHistory();
+    }
+
+    // Init
+    document.getElementById("dateInput").value = new Date().toISOString().slice(0, 10);
+    renderLabels();
+    initAuth();
+  </script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+{
+  "appId": "com.thailedger.app",
+  "appName": "บันทึกรายรับ-รายจ่าย",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}
