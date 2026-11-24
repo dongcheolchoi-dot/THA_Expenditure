@@ -1,0 +1,57 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Inject Secrets into www/config.js
+        run: |
+          cat <<EOF > www/config.js
+          window.APP_CONFIG = {
+            SCRIPT_URL: "${{ secrets.SCRIPT_URL }}",
+            DEFAULT_PIN: "${{ secrets.APP_PIN }}",
+            AUTH_MODE: "${{ secrets.AUTH_MODE || 'A' }}"
+          };
+          EOF
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Add Android platform & Sync Capacitor
+        run: |
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
+          npx cap sync android
+
+      - name: Build Debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: thai-ledger-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
